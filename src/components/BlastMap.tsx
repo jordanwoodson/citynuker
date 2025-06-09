@@ -39,7 +39,7 @@ function ZoomControls() {
   const map = useMap();
   
   return (
-    <div className="absolute bottom-24 sm:bottom-4 right-4 z-[999] flex flex-col gap-2">
+    <div className="absolute bottom-32 sm:bottom-4 right-4 z-[999] flex flex-col gap-2">
       <button
         onClick={() => map.zoomIn()}
         className="bg-white hover:bg-gray-100 text-black p-2 rounded shadow-lg transition-colors"
@@ -504,17 +504,17 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
       
       {/* Mobile info tab trigger - Bottom of screen */}
       <button
-        className={`sm:hidden fixed bottom-0 left-0 right-0 bg-black bg-opacity-90 text-white p-3 z-[1000] 
+        className={`sm:hidden fixed bottom-0 left-0 right-0 bg-black bg-opacity-90 text-white p-2 z-[1000] 
           flex items-center justify-center transition-all duration-300
           ${showInfo ? 'translate-y-full' : 'translate-y-0'}
         `}
         onClick={() => setShowInfo(true)}
       >
         <div className="flex flex-col items-center">
-          <svg className="w-4 h-4 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
           </svg>
-          <span className="text-sm font-medium">Blast Information</span>
+          <span className="text-xs font-medium">Blast Information</span>
         </div>
       </button>
       
@@ -808,13 +808,22 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
           Educational simulation only. Actual effects vary by terrain, weather, and blast altitude.
         </p>
         
+        {/* Desktop version of the button inside the panel */}
         <button
           onClick={() => window.location.href = '/'}
-          className="mt-4 w-full px-3 py-2 bg-red-600 hover:bg-red-700 rounded-md text-sm font-medium transition-colors"
+          className="hidden sm:block mt-4 w-full px-3 py-2 bg-red-600 hover:bg-red-700 rounded-md text-sm font-medium transition-colors"
         >
           Calculate Another Blast
         </button>
       </div>
+      
+      {/* Calculate Another Blast Button - Fixed position on mobile */}
+      <button
+        onClick={() => window.location.href = '/'}
+        className="sm:hidden fixed bottom-14 left-4 right-4 px-4 py-3 bg-red-600 hover:bg-red-700 rounded-md text-sm font-bold transition-colors z-[1000] shadow-lg"
+      >
+        Calculate Another Blast
+      </button>
     </div>
   );
 }
