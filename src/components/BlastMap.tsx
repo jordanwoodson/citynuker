@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Circle, Marker, Popup, useMapEvents, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Marker, Popup, useMapEvents, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { NuclearWeapon } from '@/data/nuclearWeapons';
 import 'leaflet/dist/leaflet.css';
@@ -32,6 +32,34 @@ function MapClickHandler({ onPositionChange }: { onPositionChange: (lat: number,
     },
   });
   return null;
+}
+
+// Custom zoom controls component
+function ZoomControls() {
+  const map = useMap();
+  
+  return (
+    <div className="absolute bottom-24 sm:bottom-4 right-4 z-[999] flex flex-col gap-2">
+      <button
+        onClick={() => map.zoomIn()}
+        className="bg-white hover:bg-gray-100 text-black p-2 rounded shadow-lg transition-colors"
+        aria-label="Zoom in"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+      </button>
+      <button
+        onClick={() => map.zoomOut()}
+        className="bg-white hover:bg-gray-100 text-black p-2 rounded shadow-lg transition-colors"
+        aria-label="Zoom out"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+        </svg>
+      </button>
+    </div>
+  );
 }
 
 // Custom draggable marker component
@@ -368,7 +396,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
         zoom={11} 
         style={{ height: '100%', width: '100%' }}
         preferCanvas={true}
-        zoomControl={true}
+        zoomControl={false}
         scrollWheelZoom={true}
         doubleClickZoom={true}
         touchZoom={true}
@@ -404,6 +432,8 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
           cityName={cityName}
           onPositionChange={handlePositionChange}
         />
+        
+        <ZoomControls />
       </MapContainer>
       
       {/* Map Style Selector - Desktop */}
@@ -453,8 +483,8 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
         </div>
       </div>
       
-      {/* Mobile Quick Reference - Always visible */}
-      <div className="sm:hidden absolute top-4 left-4 bg-black bg-opacity-80 text-white p-2 rounded-lg z-[999] max-w-[200px] max-h-[300px] overflow-y-auto">
+      {/* Mobile Quick Reference - Positioned to avoid zoom controls */}
+      <div className="sm:hidden absolute top-20 left-4 bg-black bg-opacity-80 text-white p-2 rounded-lg z-[999] max-w-[200px] max-h-[250px] overflow-y-auto">
         <h4 className="text-xs font-bold mb-1">Active Zones</h4>
         <div className="space-y-0.5">
           {sortedZones.map((zone) => {
@@ -472,25 +502,32 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
         </div>
       </div>
       
-      {/* Mobile info button */}
+      {/* Mobile info tab trigger - Bottom of screen */}
       <button
-        className="sm:hidden absolute top-4 right-4 bg-black bg-opacity-80 text-white p-3 rounded-full z-[1000]"
-        onClick={() => setShowInfo(!showInfo)}
+        className={`sm:hidden fixed bottom-0 left-0 right-0 bg-black bg-opacity-90 text-white p-3 z-[1000] 
+          flex items-center justify-center transition-all duration-300
+          ${showInfo ? 'translate-y-full' : 'translate-y-0'}
+        `}
+        onClick={() => setShowInfo(true)}
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+        <div className="flex flex-col items-center">
+          <svg className="w-4 h-4 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          </svg>
+          <span className="text-sm font-medium">Blast Information</span>
+        </div>
       </button>
       
       {/* Desktop sidebar / Mobile bottom sheet */}
       <div className={`
-        absolute bg-black bg-opacity-90 text-white rounded-t-2xl sm:rounded-lg z-[1000]
+        fixed sm:absolute bg-black bg-opacity-90 text-white rounded-t-2xl sm:rounded-lg z-[1001]
         sm:top-4 sm:left-4 sm:max-w-sm sm:max-h-[90vh] sm:p-4
         ${showInfo ? 'bottom-0' : '-bottom-full'} 
         sm:bottom-auto left-0 right-0 sm:left-4 sm:right-auto
         transition-all duration-300 ease-in-out
         p-4 max-h-[70vh] overflow-y-auto
-        sm:translate-y-0 sm:block
+        ${showInfo ? '' : 'sm:translate-y-0'} sm:block
+        shadow-2xl
       `}>
         {/* Mobile drag handle */}
         <div className="sm:hidden w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4"></div>
