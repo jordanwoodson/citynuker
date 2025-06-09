@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { getWeaponById } from '@/data/nuclearWeapons';
 import 'leaflet/dist/leaflet.css';
 
 const MapComponent = dynamic(() => import('@/components/BlastMap'), {
@@ -18,6 +19,8 @@ function BlastPageContent() {
     radius: number;
     bombName: string;
     cityName: string;
+    weaponId?: string;
+    weaponData?: ReturnType<typeof getWeaponById>;
   } | null>(null);
 
   useEffect(() => {
@@ -26,8 +29,14 @@ function BlastPageContent() {
     const radius = parseFloat(searchParams.get('radius') || '1000');
     const bombName = searchParams.get('bomb') || 'Unknown';
     const cityName = searchParams.get('city') || 'Unknown';
+    const weaponId = searchParams.get('weaponId') || undefined;
+    
+    let weaponData = undefined;
+    if (weaponId) {
+      weaponData = getWeaponById(weaponId);
+    }
 
-    setMapData({ lat, lng, radius, bombName, cityName });
+    setMapData({ lat, lng, radius, bombName, cityName, weaponId, weaponData });
   }, [searchParams]);
 
   if (!mapData) {

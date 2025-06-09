@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Circle, Marker, Popup, useMapEvents, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
+import { NuclearWeapon } from '@/data/nuclearWeapons';
 import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet default icon issue
@@ -19,6 +20,8 @@ interface BlastMapProps {
   radius: number;
   bombName: string;
   cityName: string;
+  weaponId?: string;
+  weaponData?: NuclearWeapon;
 }
 
 // Component to handle map click events
@@ -140,20 +143,101 @@ function InteractiveBlastZone({
   );
 }
 
-export default function BlastMap({ lat, lng, radius, bombName, cityName }: BlastMapProps) {
+export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponData }: BlastMapProps) {
   const [currentPosition, setCurrentPosition] = useState<[number, number]>([lat, lng]);
   const [hoveredZoneIndex, setHoveredZoneIndex] = useState<number | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'blast' | 'thermal' | 'radiation' | 'infrastructure'>('all');
-  const [activeZones, setActiveZones] = useState<Set<number>>(new Set([0, 1, 2, 3, 4, 5, 6, 7]));
   const [mapStyle, setMapStyle] = useState<'voyager' | 'satellite' | 'dark'>('voyager');
 
   const handlePositionChange = (newLat: number, newLng: number) => {
     setCurrentPosition([newLat, newLng]);
   };
 
-  // Blast zones with different damage levels
-  const blastZones = [
+  // Use accurate blast zones from weapon data if available
+  const blastZones = weaponData ? [
+    {
+      radius: weaponData.blastEffects.fireball,
+      color: '#FF0000',
+      fillOpacity: 0.4,
+      name: 'Fireball',
+      description: 'Complete vaporization - everything destroyed',
+      category: 'blast',
+    },
+    {
+      radius: weaponData.blastEffects.overpressure.psi20 * 1000, // Convert km to meters
+      color: '#8B0000',
+      fillOpacity: 0.35,
+      name: '20 psi overpressure',
+      description: 'Complete destruction of reinforced concrete structures',
+      category: 'blast',
+    },
+    {
+      radius: weaponData.blastEffects.overpressure.psi5 * 1000,
+      color: '#FF6600',
+      fillOpacity: 0.3,
+      name: '5 psi overpressure',
+      description: 'Collapse of most residential buildings, severe injuries',
+      category: 'blast',
+    },
+    {
+      radius: weaponData.blastEffects.overpressure.psi2 * 1000,
+      color: '#FFAA00',
+      fillOpacity: 0.2,
+      name: '2 psi overpressure',
+      description: 'Moderate damage to houses, injuries from flying debris',
+      category: 'blast',
+    },
+    {
+      radius: weaponData.blastEffects.overpressure.psi1 * 1000,
+      color: '#FFFF00',
+      fillOpacity: 0.15,
+      name: '1 psi overpressure',
+      description: 'Window breakage, light structural damage',
+      category: 'blast',
+    },
+    {
+      radius: weaponData.blastEffects.radiation.rem500 * 1000,
+      color: '#FF00FF',
+      fillOpacity: 0.15,
+      name: 'Radiation (500 rem)',
+      description: 'Lethal dose - 50-90% mortality without treatment',
+      category: 'radiation',
+    },
+    {
+      radius: weaponData.blastEffects.radiation.rem100 * 1000,
+      color: '#9400D3',
+      fillOpacity: 0.1,
+      name: 'Radiation (100 rem)',
+      description: 'Radiation sickness - increased cancer risk',
+      category: 'radiation',
+    },
+    {
+      radius: weaponData.blastEffects.thermal.thirdDegree * 1000,
+      color: '#00FFFF',
+      fillOpacity: 0.1,
+      name: '3rd degree burns',
+      description: 'Full thickness skin destruction, often fatal',
+      category: 'thermal',
+    },
+    {
+      radius: weaponData.blastEffects.thermal.secondDegree * 1000,
+      color: '#00CCFF',
+      fillOpacity: 0.08,
+      name: '2nd degree burns',
+      description: 'Blistering, requires medical treatment',
+      category: 'thermal',
+    },
+    {
+      radius: weaponData.blastEffects.thermal.firstDegree * 1000,
+      color: '#0099FF',
+      fillOpacity: 0.06,
+      name: '1st degree burns',
+      description: 'Sunburn-like effects',
+      category: 'thermal',
+    },
+  ] : [
+    // Fallback to original approximations if no weapon data
     {
       radius: radius,
       color: '#FF0000',
@@ -220,6 +304,9 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
     },
   ];
 
+  // Initialize activeZones state based on the number of zones
+  const [activeZones, setActiveZones] = useState<Set<number>>(new Set(blastZones.map((_, i) => i)));
+
   // Filter zones based on selected category and active zones
   const getVisibleZones = () => {
     return blastZones.filter((zone, index) => {
@@ -247,7 +334,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
   const handleCategoryChange = (category: typeof selectedCategory) => {
     setSelectedCategory(category);
     // Reset all zones to active when changing category
-    setActiveZones(new Set([0, 1, 2, 3, 4, 5, 6, 7]));
+    setActiveZones(new Set(blastZones.map((_, i) => i)));
   };
 
   // Get map tile URL based on selected style
@@ -420,8 +507,15 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
           </button>
         </div>
         
-        <p className="text-sm mb-1">Bomb: {bombName}</p>
+        <p className="text-sm mb-1">Weapon: {bombName}</p>
         <p className="text-sm mb-1">Target: {cityName}</p>
+        {weaponData && (
+          <>
+            <p className="text-xs text-gray-400 mb-1">Yield: {weaponData.yield >= 1000 ? `${(weaponData.yield / 1000).toFixed(1)} Mt` : `${weaponData.yield} kt`}</p>
+            {weaponData.country && <p className="text-xs text-gray-400 mb-1">Country: {weaponData.country}</p>}
+            {weaponData.year && <p className="text-xs text-gray-400 mb-1">Year: {weaponData.year}</p>}
+          </>
+        )}
         <p className="text-xs text-gray-400 mb-3">
           Click map or drag marker to move blast center
         </p>
