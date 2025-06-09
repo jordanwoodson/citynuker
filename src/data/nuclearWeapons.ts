@@ -27,6 +27,12 @@ export interface NuclearWeapon {
   };
   // Optional variable yield configurations
   variableYields?: number[];
+  // Delivery and burst information
+  burstInfo?: {
+    typical: 'airburst' | 'groundburst';
+    height?: number; // typical burst height in meters
+    falloutInfo?: string; // brief fallout description
+  };
 }
 
 // Height of Burst types
@@ -119,25 +125,30 @@ export const nuclearWeapons: NuclearWeapon[] = [
     yield: 15,
     country: 'USA',
     year: 1945,
-    description: 'First nuclear weapon used in warfare, dropped on Hiroshima - uranium gun-type design',
+    description: 'First nuclear weapon used in warfare, dropped on Hiroshima - uranium gun-type design, airburst at ~600m',
     category: 'historical',
     blastEffects: {
-      fireball: 200,
+      fireball: 150,
       overpressure: {
-        psi20: 0.50,
-        psi5: 1.5,
-        psi2: 2.9,
-        psi1: 4.3
+        psi20: 0.4,  // 0.3-0.5 km from historical data
+        psi5: 1.3,   // ~1.3 km
+        psi2: 2.9,   // Consistent with original
+        psi1: 4.5    // 4-5 km
       },
       thermal: {
-        thirdDegree: 2.2,
-        secondDegree: 3.3,
-        firstDegree: 4.6
+        thirdDegree: 2.5,  // 2-3 km
+        secondDegree: 3.5,
+        firstDegree: 4.5
       },
       radiation: {
-        rem500: 1.3,
+        rem500: 1.25,  // 1-1.5 km
         rem100: 1.6
       }
+    },
+    burstInfo: {
+      typical: 'airburst',
+      height: 600,
+      falloutInfo: 'Minimal local fallout due to airburst - prevented fireball ground contact'
     }
   },
   {
@@ -146,25 +157,30 @@ export const nuclearWeapons: NuclearWeapon[] = [
     yield: 21,
     country: 'USA',
     year: 1945,
-    description: 'Second nuclear weapon used in warfare, dropped on Nagasaki - plutonium implosion design',
+    description: 'Second nuclear weapon used in warfare, dropped on Nagasaki - plutonium implosion design, airburst at ~500m',
     category: 'historical',
     blastEffects: {
-      fireball: 220,
+      fireball: 180,
       overpressure: {
         psi20: 0.6,
         psi5: 1.7,
-        psi2: 3.3,
+        psi2: 3.2,
         psi1: 4.7
       },
       thermal: {
         thirdDegree: 2.5,
-        secondDegree: 3.7,
-        firstDegree: 5.2
+        secondDegree: 3.5,
+        firstDegree: 4.5
       },
       radiation: {
         rem500: 1.4,
         rem100: 1.7
       }
+    },
+    burstInfo: {
+      typical: 'airburst',
+      height: 500,
+      falloutInfo: 'Negligible local fallout - airburst prevented soil uptake'
     }
   },
   {
@@ -173,9 +189,31 @@ export const nuclearWeapons: NuclearWeapon[] = [
     yield: 15000,
     country: 'USA',
     year: 1954,
-    description: 'Largest US nuclear test, exceeded expected yield by 2.5x',
+    description: 'Largest US nuclear test at Bikini Atoll - surface burst, massive fallout over 7,000 sq miles',
     category: 'test',
-    blastEffects: calculateBlastEffects(15000)
+    blastEffects: {
+      fireball: 4500,  // 4-5 km across
+      overpressure: {
+        psi20: 2.7,    // 2.4-3 km
+        psi5: 11.0,    // 10-12 km
+        psi2: 22.0,
+        psi1: 40.0     // 30-40 km
+      },
+      thermal: {
+        thirdDegree: 45.0,  // 40-50 km
+        secondDegree: 65.0,
+        firstDegree: 85.0
+      },
+      radiation: {
+        rem500: 4.0,
+        rem100: 5.5
+      }
+    },
+    burstInfo: {
+      typical: 'groundburst',
+      height: 0,
+      falloutInfo: 'Massive fallout - contaminated 7,000 sq miles, fallout cloud 100 miles long'
+    }
   },
   {
     id: 'tsar-bomba',
@@ -202,6 +240,11 @@ export const nuclearWeapons: NuclearWeapon[] = [
         rem500: 5.7,
         rem100: 7.4
       }
+    },
+    burstInfo: {
+      typical: 'airburst',
+      height: 4000,
+      falloutInfo: 'Very low fallout for size - "cleanest" megaton test (97% fusion), fireball did not touch ground'
     }
   },
 
@@ -212,20 +255,60 @@ export const nuclearWeapons: NuclearWeapon[] = [
     yield: 0.02,
     country: 'USA',
     year: 1961,
-    description: 'Smallest US nuclear weapon, man-portable recoilless rifle',
+    description: 'Smallest US nuclear weapon, man-portable recoilless rifle - radiation kills within 160m',
     category: 'tactical',
-    blastEffects: calculateBlastEffects(0.02),
-    variableYields: [0.01, 0.02]
+    blastEffects: {
+      fireball: 13,
+      overpressure: {
+        psi20: 0.075,  // 50-100m
+        psi5: 0.15,    // ~150m
+        psi2: 0.25,
+        psi1: 0.35     // 300-400m
+      },
+      thermal: {
+        thirdDegree: 0.15,  // 100-200m
+        secondDegree: 0.25,
+        firstDegree: 0.35
+      },
+      radiation: {
+        rem500: 0.16,  // 160m lethal radius - primary kill mechanism
+        rem100: 0.25
+      }
+    },
+    variableYields: [0.01, 0.02],
+    burstInfo: {
+      typical: 'groundburst',
+      height: 0,
+      falloutInfo: 'Significant local fallout for its size - operators had to fire from >400m'
+    }
   },
   {
-    id: 'b61-low',
-    name: 'B61 (Low Yield)',
-    yield: 0.3,
+    id: 'b61-mod12',
+    name: 'B61 Mod 12',
+    yield: 50,
     country: 'USA',
-    description: 'Variable yield tactical bomb, lowest setting',
+    year: 2022,
+    description: 'Modern guided nuclear bomb with dial-a-yield (0.3-50 kt), high accuracy',
     category: 'tactical',
-    blastEffects: calculateBlastEffects(0.3),
-    variableYields: [0.3, 1.5, 10, 45, 60, 80, 170, 340]
+    blastEffects: {
+      fireball: 400,
+      overpressure: {
+        psi20: 0.55,   // 0.5-0.6 km
+        psi5: 2.3,     // ~2.3 km
+        psi2: 4.5,
+        psi1: 6.5      // 6-7 km
+      },
+      thermal: {
+        thirdDegree: 3.75,  // 3.5-4 km
+        secondDegree: 5.5,
+        firstDegree: 7.5
+      },
+      radiation: {
+        rem500: 1.0,
+        rem100: 1.3
+      }
+    },
+    variableYields: [0.3, 1.5, 5, 10, 50]
   },
   {
     id: 'b61-tactical',
@@ -304,18 +387,81 @@ export const nuclearWeapons: NuclearWeapon[] = [
     name: 'W88',
     yield: 475,
     country: 'USA',
-    description: 'Most powerful US warhead, Trident II D5',
+    year: 1989,
+    description: 'Most powerful US warhead, Trident II SLBM MIRV - thermonuclear',
     category: 'strategic',
-    blastEffects: calculateBlastEffects(475)
+    blastEffects: {
+      fireball: 900,  // 0.8-1 km
+      overpressure: {
+        psi20: 1.75,  // 1.5-2 km
+        psi5: 5.3,    // ~5.3 km
+        psi2: 10.5,
+        psi1: 16.0    // ~16 km
+      },
+      thermal: {
+        thirdDegree: 10.5,  // 9-12 km
+        secondDegree: 15.0,
+        firstDegree: 20.0
+      },
+      radiation: {
+        rem500: 2.5,  // 2-3 km
+        rem100: 3.2
+      }
+    }
+  },
+  {
+    id: 'b41',
+    name: 'B41 (Mk-41)',
+    yield: 25000,
+    country: 'USA',
+    year: 1960,
+    description: 'Highest yield US bomb ever deployed - three-stage thermonuclear, retired 1976',
+    category: 'historical',
+    blastEffects: {
+      fireball: 2000,  // ~4 km diameter
+      overpressure: {
+        psi20: 6.5,    // 6-7 km
+        psi5: 18.0,    // 17-19 km
+        psi2: 35.0,
+        psi1: 52.0     // 50+ km
+      },
+      thermal: {
+        thirdDegree: 40.0,  // 40+ km
+        secondDegree: 60.0,
+        firstDegree: 80.0
+      },
+      radiation: {
+        rem500: 5.0,
+        rem100: 6.5
+      }
+    }
   },
   {
     id: 'b83',
     name: 'B83',
     yield: 1200,
     country: 'USA',
-    description: 'Variable yield gravity bomb, max 1.2 Mt',
+    year: 1983,
+    description: 'Highest yield US weapon in active service - variable yield gravity bomb',
     category: 'strategic',
-    blastEffects: calculateBlastEffects(1200),
+    blastEffects: {
+      fireball: 1150,  // ~2.3 km diameter
+      overpressure: {
+        psi20: 2.25,   // 2.0-2.5 km
+        psi5: 10.5,    // ~10.5 km (6.5 mi)
+        psi2: 18.0,
+        psi1: 20.5     // 20-21 km
+      },
+      thermal: {
+        thirdDegree: 12.5,  // 12-13 km
+        secondDegree: 17.0,
+        firstDegree: 22.0
+      },
+      radiation: {
+        rem500: 2.75,  // ~3 km
+        rem100: 3.5
+      }
+    },
     variableYields: [5, 80, 170, 340, 1200]
   },
 
@@ -326,9 +472,35 @@ export const nuclearWeapons: NuclearWeapon[] = [
     yield: 22,
     country: 'Soviet Union',
     year: 1949,
-    description: 'First Soviet nuclear weapon test',
+    description: 'First Soviet nuclear weapon test - plutonium implosion design',
     category: 'historical',
     blastEffects: calculateBlastEffects(22)
+  },
+  {
+    id: 'r36-ss18-mod3',
+    name: 'R-36 SS-18 Mod 3',
+    yield: 20000,
+    country: 'Soviet Union',
+    description: 'Heavy ICBM single warhead variant "Satan" - highest yield deployed after Tsar Bomba',
+    category: 'strategic',
+    blastEffects: {
+      fireball: 2300,  // ~4.6 km diameter
+      overpressure: {
+        psi20: 6.4,    // ~6.4 km
+        psi5: 17.0,    // ~17 km
+        psi2: 33.0,
+        psi1: 47.0     // ~47 km
+      },
+      thermal: {
+        thirdDegree: 37.5,  // 35-40 km
+        secondDegree: 55.0,
+        firstDegree: 75.0
+      },
+      radiation: {
+        rem500: 4.5,  // 4-5 km
+        rem100: 6.0
+      }
+    }
   },
   {
     id: 'rds-37',
@@ -490,13 +662,30 @@ export const nuclearWeapons: NuclearWeapon[] = [
   },
   {
     id: 'nk-2017-test',
-    name: '2017 Test Device',
+    name: '2017 Thermonuclear Test',
     yield: 160,
     country: 'North Korea',
     year: 2017,
-    description: 'North Korean thermonuclear test (estimated 100-250 kt)',
+    description: 'Largest North Korean test - claimed two-stage H-bomb design',
     category: 'test',
-    blastEffects: calculateBlastEffects(160)
+    blastEffects: {
+      fireball: 650,  // 0.6-0.7 km
+      overpressure: {
+        psi20: 1.5,    // ~1.5 km
+        psi5: 3.7,     // ~3.7 km
+        psi2: 7.2,
+        psi1: 11.0     // ~11 km
+      },
+      thermal: {
+        thirdDegree: 6.5,   // 6-7 km
+        secondDegree: 9.0,
+        firstDegree: 12.0
+      },
+      radiation: {
+        rem500: 1.75,  // 1.5-2 km
+        rem100: 2.2
+      }
+    }
   },
   {
     id: 'hwasong-15',
@@ -597,6 +786,29 @@ export const getWeaponById = (id: string): NuclearWeapon | undefined => {
 // Helper function to get weapons by category
 export const getWeaponsByCategory = (category: NuclearWeapon['category']): NuclearWeapon[] => {
   return nuclearWeapons.filter(weapon => weapon.category === category);
+};
+
+// Fallout calculation for ground bursts
+export interface FalloutZone {
+  lethalDose: number;      // 1000+ rem/hr zone length in km
+  seriousDose: number;     // 300 rem/hr zone length in km  
+  moderateDose: number;    // 100 rem/hr zone length in km
+  width: number;           // Approximate width at widest point in km
+}
+
+export const calculateFallout = (yieldKt: number, isGroundBurst: boolean): FalloutZone | null => {
+  if (!isGroundBurst) return null; // Airbursts produce minimal local fallout
+  
+  // Simplified fallout model based on yield
+  // Length scales roughly as Y^0.5, width as Y^0.33
+  const yieldMt = yieldKt / 1000;
+  
+  return {
+    lethalDose: 20 * Math.pow(yieldMt, 0.5),     // ~20 km for 1 Mt
+    seriousDose: 50 * Math.pow(yieldMt, 0.5),    // ~50 km for 1 Mt
+    moderateDose: 100 * Math.pow(yieldMt, 0.5),  // ~100 km for 1 Mt
+    width: 5 * Math.pow(yieldMt, 0.33)            // ~5 km for 1 Mt
+  };
 };
 
 // Effect descriptions for UI

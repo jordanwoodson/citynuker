@@ -3,7 +3,8 @@
 import { useState, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Circle, Marker, Popup, useMapEvents, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { NuclearWeapon } from '@/data/nuclearWeapons';
+import { NuclearWeapon, calculateFallout } from '@/data/nuclearWeapons';
+import { FalloutPlume } from '@/components/FalloutPlume';
 import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet default icon issue
@@ -175,8 +176,11 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
   const [currentPosition, setCurrentPosition] = useState<[number, number]>([lat, lng]);
   const [hoveredZoneIndex, setHoveredZoneIndex] = useState<number | null>(null);
   const [showInfo, setShowInfo] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'blast' | 'thermal' | 'radiation' | 'infrastructure'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'blast' | 'thermal' | 'radiation' | 'infrastructure' | 'fallout'>('blast');
   const [mapStyle, setMapStyle] = useState<'voyager' | 'satellite' | 'dark'>('voyager');
+  const [showFallout, setShowFallout] = useState(false);
+  const [windDirection, setWindDirection] = useState(0); // degrees from north
+  const [isGroundBurst, setIsGroundBurst] = useState(false);
 
   const handlePositionChange = (newLat: number, newLng: number) => {
     setCurrentPosition([newLat, newLng]);
@@ -264,6 +268,15 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
       description: 'Sunburn-like effects',
       category: 'thermal',
     },
+    {
+      // EMP radius approximation: roughly 2x the 1 psi blast radius for airburst
+      radius: weaponData.blastEffects.overpressure.psi1 * 2000,
+      color: '#8A2BE2',
+      fillOpacity: 0.05,
+      name: 'EMP effects',
+      description: 'Electromagnetic pulse - electronics disruption',
+      category: 'infrastructure',
+    },
   ] : [
     // Fallback to original approximations if no weapon data
     {
@@ -335,8 +348,15 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
   // Initialize activeZones state based on the number of zones
   const [activeZones, setActiveZones] = useState<Set<number>>(new Set(blastZones.map((_, i) => i)));
 
+  // Calculate fallout zone if applicable
+  const falloutZone = useMemo(() => {
+    if (!weaponData || !isGroundBurst) return null;
+    return calculateFallout(weaponData.yield, true);
+  }, [weaponData, isGroundBurst]);
+
   // Filter zones based on selected category and active zones
   const getVisibleZones = () => {
+    if (selectedCategory === 'fallout') return []; // Fallout is handled separately
     return blastZones.filter((zone, index) => {
       if (!activeZones.has(index)) return false;
       if (selectedCategory === 'all') return true;
@@ -425,6 +445,16 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
             />
           );
         })}
+        
+        {/* Fallout plume visualization */}
+        {falloutZone && (
+          <FalloutPlume
+            center={currentPosition}
+            windDirection={windDirection}
+            falloutZone={falloutZone}
+            visible={showFallout && (selectedCategory === 'fallout' || selectedCategory === 'all')}
+          />
+        )}
         
         <DraggableMarker 
           position={currentPosition}
@@ -551,6 +581,17 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
             <p className="text-xs text-gray-400 mb-1">Yield: {weaponData.yield >= 1000 ? `${(weaponData.yield / 1000).toFixed(1)} Mt` : `${weaponData.yield} kt`}</p>
             {weaponData.country && <p className="text-xs text-gray-400 mb-1">Country: {weaponData.country}</p>}
             {weaponData.year && <p className="text-xs text-gray-400 mb-1">Year: {weaponData.year}</p>}
+            {weaponData.burstInfo && (
+              <>
+                <p className="text-xs text-gray-400 mb-1">
+                  Typical burst: {weaponData.burstInfo.typical === 'airburst' ? 'Airburst' : 'Ground burst'}
+                  {weaponData.burstInfo.height ? ` at ${weaponData.burstInfo.height}m` : ''}
+                </p>
+                {weaponData.burstInfo.falloutInfo && (
+                  <p className="text-xs text-gray-500 italic mb-1">{weaponData.burstInfo.falloutInfo}</p>
+                )}
+              </>
+            )}
           </>
         )}
         <p className="text-xs text-gray-400 mb-3">
@@ -634,7 +675,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
             </button>
             <button
               onClick={() => handleCategoryChange('infrastructure')}
-              className={`px-2 py-1 text-xs rounded col-span-2 transition-colors ${
+              className={`px-2 py-1 text-xs rounded transition-colors ${
                 selectedCategory === 'infrastructure' 
                   ? 'bg-blue-600 text-white' 
                   : 'bg-gray-700 hover:bg-gray-600 text-white'
@@ -642,8 +683,94 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
             >
               Infrastructure
             </button>
+            <button
+              onClick={() => handleCategoryChange('fallout')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                selectedCategory === 'fallout' 
+                  ? 'bg-indigo-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Fallout
+            </button>
           </div>
         </div>
+        
+        {/* Fallout Controls */}
+        {weaponData && (
+          <div className="mb-4 p-3 bg-gray-800 rounded-lg">
+            <p className="text-xs font-semibold mb-2">Fallout Settings:</p>
+            
+            {/* Ground Burst Toggle */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs">Burst Type:</span>
+              <button
+                onClick={() => setIsGroundBurst(!isGroundBurst)}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  isGroundBurst 
+                    ? 'bg-red-600 text-white' 
+                    : 'bg-gray-700 text-white'
+                }`}
+              >
+                {isGroundBurst ? 'Ground Burst' : 'Air Burst'}
+              </button>
+            </div>
+            
+            {/* Wind Direction Control */}
+            {isGroundBurst && (
+              <>
+                <div className="mb-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs">Wind Direction:</span>
+                    <span className="text-xs text-gray-400">{windDirection}°</span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="range"
+                      min="0"
+                      max="359"
+                      value={windDirection}
+                      onChange={(e) => setWindDirection(Number(e.target.value))}
+                      className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                    />
+                    {/* Compass indicator */}
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>N</span>
+                      <span>E</span>
+                      <span>S</span>
+                      <span>W</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Show Fallout Toggle */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">Show Fallout:</span>
+                  <button
+                    onClick={() => setShowFallout(!showFallout)}
+                    className={`px-3 py-1 text-xs rounded transition-colors ${
+                      showFallout 
+                        ? 'bg-indigo-600 text-white' 
+                        : 'bg-gray-700 text-white'
+                    }`}
+                  >
+                    {showFallout ? 'Visible' : 'Hidden'}
+                  </button>
+                </div>
+                
+                <p className="text-xs text-gray-500 mt-2 italic">
+                  Ground bursts create significant radioactive fallout that spreads downwind
+                </p>
+              </>
+            )}
+            
+            {!isGroundBurst && (
+              <p className="text-xs text-gray-500 italic">
+                Air bursts minimize fallout by preventing fireball ground contact
+              </p>
+            )}
+          </div>
+        )}
         
         <div className="space-y-1.5 text-xs">
           <h3 className="font-semibold text-sm mt-2 mb-1">Active Zones:</h3>
@@ -772,6 +899,53 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
                 );
               })}
             </>
+          ) : selectedCategory === 'fallout' ? (
+            /* Show fallout information */
+            <div className="space-y-2">
+              {isGroundBurst && falloutZone ? (
+                <>
+                  <div className="p-2 bg-gray-800 rounded">
+                    <div className="flex items-center mb-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 bg-indigo-800" />
+                      <p className="font-medium text-xs">Lethal Fallout Zone</p>
+                    </div>
+                    <p className="text-gray-300 text-xs ml-4">1000+ rem/hr - Length: ~{falloutZone.lethalDose.toFixed(0)} km</p>
+                    <p className="text-gray-400 text-xs ml-4">Fatal within hours without shelter</p>
+                  </div>
+                  <div className="p-2 bg-gray-800 rounded">
+                    <div className="flex items-center mb-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 bg-purple-700" />
+                      <p className="font-medium text-xs">Serious Fallout Zone</p>
+                    </div>
+                    <p className="text-gray-300 text-xs ml-4">300 rem/hr - Length: ~{falloutZone.seriousDose.toFixed(0)} km</p>
+                    <p className="text-gray-400 text-xs ml-4">Severe radiation sickness</p>
+                  </div>
+                  <div className="p-2 bg-gray-800 rounded">
+                    <div className="flex items-center mb-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 bg-purple-500" />
+                      <p className="font-medium text-xs">Moderate Fallout Zone</p>
+                    </div>
+                    <p className="text-gray-300 text-xs ml-4">100 rem/hr - Length: ~{falloutZone.moderateDose.toFixed(0)} km</p>
+                    <p className="text-gray-400 text-xs ml-4">Radiation sickness likely</p>
+                  </div>
+                  <div className="p-2 bg-yellow-900 bg-opacity-30 rounded mt-2">
+                    <p className="text-xs text-yellow-300 font-medium">⚠️ Fallout Warning</p>
+                    <p className="text-xs text-yellow-200 mt-1">
+                      Radioactive particles will fall from the sky for hours after detonation. 
+                      Seek shelter immediately and remain indoors for at least 48 hours.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="p-2 bg-gray-800 rounded">
+                  <p className="text-xs text-gray-400">
+                    {weaponData ? 
+                      'Switch to ground burst to see fallout effects' : 
+                      'No weapon selected'}
+                  </p>
+                </div>
+              )}
+            </div>
           ) : (
             /* Show only filtered category */
             blastZones.filter(z => z.category === selectedCategory).map((zone) => {
