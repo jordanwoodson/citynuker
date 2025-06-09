@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
@@ -10,7 +10,7 @@ const MapComponent = dynamic(() => import('@/components/BlastMap'), {
   loading: () => <div className="w-full h-screen bg-gray-900 flex items-center justify-center text-white">Loading map...</div>
 });
 
-export default function BlastPage() {
+function BlastPageContent() {
   const searchParams = useSearchParams();
   const [mapData, setMapData] = useState<{
     lat: number;
@@ -35,4 +35,12 @@ export default function BlastPage() {
   }
 
   return <MapComponent {...mapData} />;
+}
+
+export default function BlastPage() {
+  return (
+    <Suspense fallback={<div className="w-full h-screen bg-gray-900 flex items-center justify-center text-white">Loading...</div>}>
+      <BlastPageContent />
+    </Suspense>
+  );
 }

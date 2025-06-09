@@ -6,7 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet default icon issue
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: '/leaflet/marker-icon-2x.png',
   iconUrl: '/leaflet/marker-icon.png',
@@ -43,7 +43,7 @@ function DraggableMarker({
   cityName: string;
   onPositionChange: (lat: number, lng: number) => void;
 }) {
-  const [draggable, setDraggable] = useState(true);
+  const [draggable] = useState(true);
   const markerRef = useRef<L.Marker>(null);
 
   const eventHandlers = useMemo(
@@ -92,7 +92,13 @@ function InteractiveBlastZone({
   isHighlighted,
   onHover
 }: { 
-  zone: any;
+  zone: {
+    radius: number;
+    color: string;
+    fillOpacity: number;
+    name: string;
+    description: string;
+  };
   center: [number, number];
   isHighlighted: boolean;
   onHover: (hovering: boolean) => void;
@@ -215,7 +221,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
         
         <MapClickHandler onPositionChange={handlePositionChange} />
         
-        {sortedZones.map((zone, index) => {
+        {sortedZones.map((zone) => {
           const originalIndex = blastZones.findIndex(z => z.name === zone.name);
           return (
             <InteractiveBlastZone

@@ -53,9 +53,9 @@ export default function Home() {
       
       // Filter and sort by importance
       const citySuggestions = data
-        .filter((item: any) => 
+        .filter((item: CitySuggestion) => 
           ['city', 'town', 'village', 'municipality', 'administrative'].some(type => 
-            item.type?.includes(type) || item.class === 'place'
+            item.type?.includes(type) || (item as unknown as Record<string, string>).class === 'place'
           )
         )
         .sort((a: CitySuggestion, b: CitySuggestion) => b.importance - a.importance)
