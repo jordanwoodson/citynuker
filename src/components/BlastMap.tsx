@@ -494,6 +494,95 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
         </button>
       </div>
       
+      {/* Top Control Panel - Effect Filter and Active Zones */}
+      <div className="absolute top-4 left-4 right-4 sm:left-[400px] sm:right-[400px] flex gap-2 z-[999]">
+        {/* Category Filter - Vertical layout */}
+        <div className="bg-black bg-opacity-80 text-white rounded-lg p-2 flex-shrink-0">
+          <p className="text-xs font-semibold mb-1">Effect Type:</p>
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => handleCategoryChange('all')}
+              className={`px-2 py-0.5 text-xs rounded transition-colors text-left ${
+                selectedCategory === 'all' 
+                  ? 'bg-white text-black' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => handleCategoryChange('blast')}
+              className={`px-2 py-0.5 text-xs rounded transition-colors text-left ${
+                selectedCategory === 'blast' 
+                  ? 'bg-orange-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Blast
+            </button>
+            <button
+              onClick={() => handleCategoryChange('thermal')}
+              className={`px-2 py-0.5 text-xs rounded transition-colors text-left ${
+                selectedCategory === 'thermal' 
+                  ? 'bg-cyan-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Thermal
+            </button>
+            <button
+              onClick={() => handleCategoryChange('radiation')}
+              className={`px-2 py-0.5 text-xs rounded transition-colors text-left ${
+                selectedCategory === 'radiation' 
+                  ? 'bg-purple-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Radiation
+            </button>
+            <button
+              onClick={() => handleCategoryChange('infrastructure')}
+              className={`px-2 py-0.5 text-xs rounded transition-colors text-left ${
+                selectedCategory === 'infrastructure' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Infra
+            </button>
+            <button
+              onClick={() => handleCategoryChange('fallout')}
+              className={`px-2 py-0.5 text-xs rounded transition-colors text-left ${
+                selectedCategory === 'fallout' 
+                  ? 'bg-indigo-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Fallout
+            </button>
+          </div>
+        </div>
+        
+        {/* Active Zones - Takes remaining space */}
+        <div className="bg-black bg-opacity-80 text-white rounded-lg p-2 flex-1 overflow-hidden">
+          <h4 className="text-xs font-bold mb-1">Active Zones</h4>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs max-h-[120px] overflow-y-auto">
+            {sortedZones.map((zone) => {
+              const index = blastZones.findIndex(z => z === zone);
+              return (
+                <div key={index} className="flex items-center">
+                  <span 
+                    className="inline-block w-2 h-2 rounded-full mr-1 flex-shrink-0" 
+                    style={{ backgroundColor: zone.color }}
+                  />
+                  <span className="text-xs whitespace-nowrap">{zone.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      
       {/* Map Legend - Desktop Only */}
       <div className="hidden sm:block absolute bottom-4 right-4 bg-black bg-opacity-80 text-white p-3 rounded-lg z-[999] max-w-xs max-h-[400px] overflow-y-auto">
         <h4 className="text-xs font-bold mb-2">Quick Reference</h4>
@@ -513,24 +602,6 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
         </div>
       </div>
       
-      {/* Mobile Quick Reference - Positioned to avoid zoom controls */}
-      <div className="sm:hidden absolute top-20 left-4 bg-black bg-opacity-80 text-white p-2 rounded-lg z-[999] max-w-[200px] max-h-[250px] overflow-y-auto">
-        <h4 className="text-xs font-bold mb-1">Active Zones</h4>
-        <div className="space-y-0.5">
-          {sortedZones.map((zone) => {
-            const index = blastZones.findIndex(z => z === zone);
-            return (
-              <div key={index} className="flex items-center text-xs">
-                <span 
-                  className="inline-block w-2 h-2 rounded-full mr-1.5 flex-shrink-0" 
-                  style={{ backgroundColor: zone.color }}
-                />
-                <span className="truncate text-xs">{zone.name}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
       
       {/* Mobile info tab trigger - Bottom of screen */}
       <button
@@ -544,7 +615,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
           <svg className="w-4 h-4 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
           </svg>
-          <span className="text-xs font-medium">Blast Information</span>
+          <span className="text-xs font-medium">Settings</span>
         </div>
       </button>
       
@@ -563,7 +634,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
         <div className="sm:hidden w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4"></div>
         
         <div className="flex justify-between items-start mb-2">
-          <h2 className="text-lg sm:text-xl font-bold">Nuclear Blast Simulation</h2>
+          <h2 className="text-lg sm:text-xl font-bold">Settings</h2>
           <button
             className="sm:hidden text-gray-400"
             onClick={() => setShowInfo(false)}
@@ -629,72 +700,6 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
           </div>
         </div>
         
-        {/* Category Filter Buttons */}
-        <div className="mb-4">
-          <p className="text-xs font-semibold mb-2">Filter by effect type:</p>
-          <div className="grid grid-cols-2 gap-1">
-            <button
-              onClick={() => handleCategoryChange('all')}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                selectedCategory === 'all' 
-                  ? 'bg-white text-black' 
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            >
-              All Effects
-            </button>
-            <button
-              onClick={() => handleCategoryChange('blast')}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                selectedCategory === 'blast' 
-                  ? 'bg-orange-600 text-white' 
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            >
-              Blast
-            </button>
-            <button
-              onClick={() => handleCategoryChange('thermal')}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                selectedCategory === 'thermal' 
-                  ? 'bg-cyan-600 text-white' 
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            >
-              Thermal
-            </button>
-            <button
-              onClick={() => handleCategoryChange('radiation')}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                selectedCategory === 'radiation' 
-                  ? 'bg-purple-600 text-white' 
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            >
-              Radiation
-            </button>
-            <button
-              onClick={() => handleCategoryChange('infrastructure')}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                selectedCategory === 'infrastructure' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            >
-              Infrastructure
-            </button>
-            <button
-              onClick={() => handleCategoryChange('fallout')}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                selectedCategory === 'fallout' 
-                  ? 'bg-indigo-600 text-white' 
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-            >
-              Fallout
-            </button>
-          </div>
-        </div>
         
         {/* Fallout Controls */}
         {weaponData && (
@@ -985,18 +990,18 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
         {/* Desktop version of the button inside the panel */}
         <button
           onClick={() => window.location.href = '/'}
-          className="hidden sm:block mt-4 w-full px-3 py-2 bg-red-600 hover:bg-red-700 rounded-md text-sm font-medium transition-colors"
+          className="hidden sm:block mt-4 w-full px-2 py-1.5 bg-red-600 hover:bg-red-700 rounded-md text-xs font-medium transition-colors"
         >
-          Calculate Another Blast
+          Drop Another Nuke
         </button>
       </div>
       
-      {/* Calculate Another Blast Button - Fixed position on mobile */}
+      {/* Drop Another Nuke Button - Fixed position on mobile */}
       <button
         onClick={() => window.location.href = '/'}
-        className="sm:hidden fixed bottom-14 left-4 right-4 px-4 py-3 bg-red-600 hover:bg-red-700 rounded-md text-sm font-bold transition-colors z-[1000] shadow-lg"
+        className="sm:hidden fixed bottom-14 left-4 right-4 px-3 py-2 bg-red-600 hover:bg-red-700 rounded-md text-xs font-bold transition-colors z-[1000] shadow-lg"
       >
-        Calculate Another Blast
+        Drop Another Nuke
       </button>
     </div>
   );
