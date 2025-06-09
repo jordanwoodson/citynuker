@@ -523,7 +523,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
             <>
               {/* Blast Effects */}
               <h4 className="font-medium text-xs mt-2 mb-1 text-orange-400">Blast Effects</h4>
-              {blastZones.filter(z => z.category === 'blast').map((zone, i) => {
+              {blastZones.filter(z => z.category === 'blast').map((zone) => {
                 const index = blastZones.findIndex(z => z === zone);
                 return (
                   <div 
