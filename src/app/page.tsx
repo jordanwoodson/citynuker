@@ -268,7 +268,7 @@ export default function Home() {
         
         <div className="mt-8 p-4 bg-gray-800 rounded-md">
           <p className="text-sm text-gray-400">
-            Note: This tool is for educational purposes only. Blast radius calculations are rough approximations.
+            Note: This tool is not for educational purposes. Blast radius calculations are rough approximations.
           </p>
         </div>
       </div>

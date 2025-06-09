@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "City Nuker",
   description: "Nuke cities with a single click!",
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

@@ -98,6 +98,7 @@ function InteractiveBlastZone({
     fillOpacity: number;
     name: string;
     description: string;
+    category: string;
   };
   center: [number, number];
   isHighlighted: boolean;
@@ -143,6 +144,9 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
   const [currentPosition, setCurrentPosition] = useState<[number, number]>([lat, lng]);
   const [hoveredZoneIndex, setHoveredZoneIndex] = useState<number | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'blast' | 'thermal' | 'radiation' | 'infrastructure'>('all');
+  const [activeZones, setActiveZones] = useState<Set<number>>(new Set([0, 1, 2, 3, 4, 5, 6, 7]));
+  const [mapStyle, setMapStyle] = useState<'voyager' | 'satellite' | 'dark'>('voyager');
 
   const handlePositionChange = (newLat: number, newLng: number) => {
     setCurrentPosition([newLat, newLng]);
@@ -156,6 +160,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
       fillOpacity: 0.4,
       name: 'Fireball',
       description: 'Complete vaporization - everything destroyed',
+      category: 'blast',
     },
     {
       radius: radius * 2.5,
@@ -163,6 +168,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
       fillOpacity: 0.3,
       name: 'Heavy blast damage',
       description: '5 psi overpressure - most buildings destroyed',
+      category: 'blast',
     },
     {
       radius: radius * 4,
@@ -170,6 +176,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
       fillOpacity: 0.2,
       name: 'Moderate blast damage',
       description: '1 psi overpressure - residential buildings severely damaged',
+      category: 'blast',
     },
     {
       radius: radius * 6,
@@ -177,6 +184,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
       fillOpacity: 0.15,
       name: 'Light blast damage',
       description: '0.25 psi overpressure - windows shattered',
+      category: 'blast',
     },
     {
       radius: radius * 5,
@@ -184,6 +192,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
       fillOpacity: 0.15,
       name: 'Radiation radius (500 rem)',
       description: 'Lethal dose - 50-90% mortality without treatment',
+      category: 'radiation',
     },
     {
       radius: radius * 8,
@@ -191,6 +200,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
       fillOpacity: 0.1,
       name: 'Radiation radius (100 rem)',
       description: 'Radiation sickness - increased cancer risk',
+      category: 'radiation',
     },
     {
       radius: radius * 7,
@@ -198,6 +208,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
       fillOpacity: 0.1,
       name: '3rd degree burn radius',
       description: 'Severe burns to exposed skin',
+      category: 'thermal',
     },
     {
       radius: radius * 10,
@@ -205,18 +216,84 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
       fillOpacity: 0.08,
       name: 'Power outage radius',
       description: 'EMP effects - electronics and power grid failure',
+      category: 'infrastructure',
     },
   ];
 
+  // Filter zones based on selected category and active zones
+  const getVisibleZones = () => {
+    return blastZones.filter((zone, index) => {
+      if (!activeZones.has(index)) return false;
+      if (selectedCategory === 'all') return true;
+      return zone.category === selectedCategory;
+    });
+  };
+
   // Sort zones by radius (largest first) so smaller zones render on top
-  const sortedZones = [...blastZones].sort((a, b) => b.radius - a.radius);
+  const sortedZones = [...getVisibleZones()].sort((a, b) => b.radius - a.radius);
+
+  // Toggle individual zone visibility
+  const toggleZone = (index: number) => {
+    const newActiveZones = new Set(activeZones);
+    if (newActiveZones.has(index)) {
+      newActiveZones.delete(index);
+    } else {
+      newActiveZones.add(index);
+    }
+    setActiveZones(newActiveZones);
+  };
+
+  // Handle category selection
+  const handleCategoryChange = (category: typeof selectedCategory) => {
+    setSelectedCategory(category);
+    // Reset all zones to active when changing category
+    setActiveZones(new Set([0, 1, 2, 3, 4, 5, 6, 7]));
+  };
+
+  // Get map tile URL based on selected style
+  const getMapTileUrl = () => {
+    switch (mapStyle) {
+      case 'satellite':
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      case 'dark':
+        return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+      default:
+        return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png';
+    }
+  };
+
+  // Get attribution based on map style
+  const getAttribution = () => {
+    switch (mapStyle) {
+      case 'satellite':
+        return 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
+      case 'dark':
+        return '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+      default:
+        return '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    }
+  };
 
   return (
     <div className="relative w-full h-screen">
-      <MapContainer center={currentPosition} zoom={11} style={{ height: '100%', width: '100%' }}>
+      <MapContainer 
+        center={currentPosition} 
+        zoom={11} 
+        style={{ height: '100%', width: '100%' }}
+        preferCanvas={true}
+        zoomControl={true}
+        scrollWheelZoom={true}
+        doubleClickZoom={true}
+        touchZoom={true}
+      >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={mapStyle}
+          attribution={getAttribution()}
+          url={getMapTileUrl()}
+          subdomains={mapStyle === 'satellite' ? [] : 'abcd'}
+          maxZoom={19}
+          tileSize={256}
+          detectRetina={true}
         />
         
         <MapClickHandler onPositionChange={handlePositionChange} />
@@ -241,6 +318,72 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
           onPositionChange={handlePositionChange}
         />
       </MapContainer>
+      
+      {/* Map Style Selector - Desktop */}
+      <div className="hidden sm:flex absolute top-4 right-4 bg-black bg-opacity-80 text-white rounded-lg z-[999] p-1">
+        <button
+          onClick={() => setMapStyle('voyager')}
+          className={`px-3 py-1.5 text-xs rounded transition-colors ${
+            mapStyle === 'voyager' ? 'bg-white text-black' : 'hover:bg-gray-700'
+          }`}
+        >
+          Standard
+        </button>
+        <button
+          onClick={() => setMapStyle('satellite')}
+          className={`px-3 py-1.5 text-xs rounded transition-colors ${
+            mapStyle === 'satellite' ? 'bg-white text-black' : 'hover:bg-gray-700'
+          }`}
+        >
+          Satellite
+        </button>
+        <button
+          onClick={() => setMapStyle('dark')}
+          className={`px-3 py-1.5 text-xs rounded transition-colors ${
+            mapStyle === 'dark' ? 'bg-white text-black' : 'hover:bg-gray-700'
+          }`}
+        >
+          Dark
+        </button>
+      </div>
+      
+      {/* Map Legend - Desktop Only */}
+      <div className="hidden sm:block absolute bottom-4 right-4 bg-black bg-opacity-80 text-white p-3 rounded-lg z-[999] max-w-xs max-h-[400px] overflow-y-auto">
+        <h4 className="text-xs font-bold mb-2">Quick Reference</h4>
+        <div className="space-y-1">
+          {sortedZones.map((zone) => {
+            const index = blastZones.findIndex(z => z === zone);
+            return (
+              <div key={index} className="flex items-center text-xs">
+                <span 
+                  className="inline-block w-3 h-3 rounded-full mr-2 flex-shrink-0" 
+                  style={{ backgroundColor: zone.color }}
+                />
+                <span className="truncate">{zone.name} ({(zone.radius / 1000).toFixed(1)}km)</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Mobile Quick Reference - Always visible */}
+      <div className="sm:hidden absolute top-4 left-4 bg-black bg-opacity-80 text-white p-2 rounded-lg z-[999] max-w-[200px] max-h-[300px] overflow-y-auto">
+        <h4 className="text-xs font-bold mb-1">Active Zones</h4>
+        <div className="space-y-0.5">
+          {sortedZones.map((zone) => {
+            const index = blastZones.findIndex(z => z === zone);
+            return (
+              <div key={index} className="flex items-center text-xs">
+                <span 
+                  className="inline-block w-2 h-2 rounded-full mr-1.5 flex-shrink-0" 
+                  style={{ backgroundColor: zone.color }}
+                />
+                <span className="truncate text-xs">{zone.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
       
       {/* Mobile info button */}
       <button
@@ -283,78 +426,251 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName }: Blast
           Click map or drag marker to move blast center
         </p>
         
+        {/* Map Style Selector - Mobile */}
+        <div className="mb-3">
+          <p className="text-xs font-semibold mb-2">Map Style:</p>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setMapStyle('voyager')}
+              className={`px-2 py-1 text-xs rounded flex-1 transition-colors ${
+                mapStyle === 'voyager' ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'
+              }`}
+            >
+              Standard
+            </button>
+            <button
+              onClick={() => setMapStyle('satellite')}
+              className={`px-2 py-1 text-xs rounded flex-1 transition-colors ${
+                mapStyle === 'satellite' ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'
+              }`}
+            >
+              Satellite
+            </button>
+            <button
+              onClick={() => setMapStyle('dark')}
+              className={`px-2 py-1 text-xs rounded flex-1 transition-colors ${
+                mapStyle === 'dark' ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'
+              }`}
+            >
+              Dark
+            </button>
+          </div>
+        </div>
+        
+        {/* Category Filter Buttons */}
+        <div className="mb-4">
+          <p className="text-xs font-semibold mb-2">Filter by effect type:</p>
+          <div className="grid grid-cols-2 gap-1">
+            <button
+              onClick={() => handleCategoryChange('all')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                selectedCategory === 'all' 
+                  ? 'bg-white text-black' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              All Effects
+            </button>
+            <button
+              onClick={() => handleCategoryChange('blast')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                selectedCategory === 'blast' 
+                  ? 'bg-orange-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Blast
+            </button>
+            <button
+              onClick={() => handleCategoryChange('thermal')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                selectedCategory === 'thermal' 
+                  ? 'bg-cyan-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Thermal
+            </button>
+            <button
+              onClick={() => handleCategoryChange('radiation')}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                selectedCategory === 'radiation' 
+                  ? 'bg-purple-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Radiation
+            </button>
+            <button
+              onClick={() => handleCategoryChange('infrastructure')}
+              className={`px-2 py-1 text-xs rounded col-span-2 transition-colors ${
+                selectedCategory === 'infrastructure' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+            >
+              Infrastructure
+            </button>
+          </div>
+        </div>
+        
         <div className="space-y-1.5 text-xs">
-          <h3 className="font-semibold text-sm mt-2 mb-1">Blast Effects:</h3>
-          {blastZones.slice(0, 4).map((zone, index) => (
-            <div 
-              key={index} 
-              className={`flex items-start p-1 rounded transition-colors ${
-                hoveredZoneIndex === index ? 'bg-gray-800' : ''
-              }`}
-              onMouseEnter={() => setHoveredZoneIndex(index)}
-              onMouseLeave={() => setHoveredZoneIndex(null)}
-            >
-              <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 mt-0.5 flex-shrink-0" style={{ backgroundColor: zone.color }} />
-              <div>
-                <p className="font-medium">{zone.name}: {(zone.radius / 1000).toFixed(1)} km</p>
-                <p className="text-gray-300 text-xs">{zone.description}</p>
-              </div>
-            </div>
-          ))}
+          <h3 className="font-semibold text-sm mt-2 mb-1">Active Zones:</h3>
+          <p className="text-xs text-gray-400 mb-2">Click to toggle visibility</p>
           
-          <h3 className="font-semibold text-sm mt-3 mb-1">Thermal Effects:</h3>
-          {blastZones.slice(6, 7).map((zone, index) => (
-            <div 
-              key={index} 
-              className={`flex items-start p-1 rounded transition-colors ${
-                hoveredZoneIndex === index + 6 ? 'bg-gray-800' : ''
-              }`}
-              onMouseEnter={() => setHoveredZoneIndex(index + 6)}
-              onMouseLeave={() => setHoveredZoneIndex(null)}
-            >
-              <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 mt-0.5 flex-shrink-0" style={{ backgroundColor: zone.color }} />
-              <div>
-                <p className="font-medium">{zone.name}: {(zone.radius / 1000).toFixed(1)} km</p>
-                <p className="text-gray-300 text-xs">{zone.description}</p>
-              </div>
-            </div>
-          ))}
-          
-          <h3 className="font-semibold text-sm mt-3 mb-1">Radiation Effects:</h3>
-          {blastZones.slice(4, 6).map((zone, index) => (
-            <div 
-              key={index} 
-              className={`flex items-start p-1 rounded transition-colors ${
-                hoveredZoneIndex === index + 4 ? 'bg-gray-800' : ''
-              }`}
-              onMouseEnter={() => setHoveredZoneIndex(index + 4)}
-              onMouseLeave={() => setHoveredZoneIndex(null)}
-            >
-              <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 mt-0.5 flex-shrink-0" style={{ backgroundColor: zone.color }} />
-              <div>
-                <p className="font-medium">{zone.name}: {(zone.radius / 1000).toFixed(1)} km</p>
-                <p className="text-gray-300 text-xs">{zone.description}</p>
-              </div>
-            </div>
-          ))}
-          
-          <h3 className="font-semibold text-sm mt-3 mb-1">Infrastructure:</h3>
-          {blastZones.slice(7, 8).map((zone, index) => (
-            <div 
-              key={index} 
-              className={`flex items-start p-1 rounded transition-colors ${
-                hoveredZoneIndex === index + 7 ? 'bg-gray-800' : ''
-              }`}
-              onMouseEnter={() => setHoveredZoneIndex(index + 7)}
-              onMouseLeave={() => setHoveredZoneIndex(null)}
-            >
-              <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 mt-0.5 flex-shrink-0" style={{ backgroundColor: zone.color }} />
-              <div>
-                <p className="font-medium">{zone.name}: {(zone.radius / 1000).toFixed(1)} km</p>
-                <p className="text-gray-300 text-xs">{zone.description}</p>
-              </div>
-            </div>
-          ))}
+          {/* Group zones by category for display */}
+          {selectedCategory === 'all' ? (
+            <>
+              {/* Blast Effects */}
+              <h4 className="font-medium text-xs mt-2 mb-1 text-orange-400">Blast Effects</h4>
+              {blastZones.filter(z => z.category === 'blast').map((zone, i) => {
+                const index = blastZones.findIndex(z => z === zone);
+                return (
+                  <div 
+                    key={index} 
+                    className={`flex items-start p-1 rounded transition-colors cursor-pointer ${
+                      hoveredZoneIndex === index ? 'bg-gray-800' : ''
+                    } ${!activeZones.has(index) ? 'opacity-50' : ''}`}
+                    onMouseEnter={() => setHoveredZoneIndex(index)}
+                    onMouseLeave={() => setHoveredZoneIndex(null)}
+                    onClick={() => toggleZone(index)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={activeZones.has(index)}
+                      onChange={() => toggleZone(index)}
+                      className="mr-2 mt-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 mt-0.5 flex-shrink-0" style={{ backgroundColor: zone.color }} />
+                    <div className="flex-1">
+                      <p className="font-medium">{zone.name}: {(zone.radius / 1000).toFixed(1)} km</p>
+                      <p className="text-gray-300 text-xs">{zone.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {/* Thermal Effects */}
+              <h4 className="font-medium text-xs mt-3 mb-1 text-cyan-400">Thermal Effects</h4>
+              {blastZones.filter(z => z.category === 'thermal').map((zone) => {
+                const index = blastZones.findIndex(z => z === zone);
+                return (
+                  <div 
+                    key={index} 
+                    className={`flex items-start p-1 rounded transition-colors cursor-pointer ${
+                      hoveredZoneIndex === index ? 'bg-gray-800' : ''
+                    } ${!activeZones.has(index) ? 'opacity-50' : ''}`}
+                    onMouseEnter={() => setHoveredZoneIndex(index)}
+                    onMouseLeave={() => setHoveredZoneIndex(null)}
+                    onClick={() => toggleZone(index)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={activeZones.has(index)}
+                      onChange={() => toggleZone(index)}
+                      className="mr-2 mt-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 mt-0.5 flex-shrink-0" style={{ backgroundColor: zone.color }} />
+                    <div className="flex-1">
+                      <p className="font-medium">{zone.name}: {(zone.radius / 1000).toFixed(1)} km</p>
+                      <p className="text-gray-300 text-xs">{zone.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {/* Radiation Effects */}
+              <h4 className="font-medium text-xs mt-3 mb-1 text-purple-400">Radiation Effects</h4>
+              {blastZones.filter(z => z.category === 'radiation').map((zone) => {
+                const index = blastZones.findIndex(z => z === zone);
+                return (
+                  <div 
+                    key={index} 
+                    className={`flex items-start p-1 rounded transition-colors cursor-pointer ${
+                      hoveredZoneIndex === index ? 'bg-gray-800' : ''
+                    } ${!activeZones.has(index) ? 'opacity-50' : ''}`}
+                    onMouseEnter={() => setHoveredZoneIndex(index)}
+                    onMouseLeave={() => setHoveredZoneIndex(null)}
+                    onClick={() => toggleZone(index)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={activeZones.has(index)}
+                      onChange={() => toggleZone(index)}
+                      className="mr-2 mt-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 mt-0.5 flex-shrink-0" style={{ backgroundColor: zone.color }} />
+                    <div className="flex-1">
+                      <p className="font-medium">{zone.name}: {(zone.radius / 1000).toFixed(1)} km</p>
+                      <p className="text-gray-300 text-xs">{zone.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              {/* Infrastructure Effects */}
+              <h4 className="font-medium text-xs mt-3 mb-1 text-blue-400">Infrastructure</h4>
+              {blastZones.filter(z => z.category === 'infrastructure').map((zone) => {
+                const index = blastZones.findIndex(z => z === zone);
+                return (
+                  <div 
+                    key={index} 
+                    className={`flex items-start p-1 rounded transition-colors cursor-pointer ${
+                      hoveredZoneIndex === index ? 'bg-gray-800' : ''
+                    } ${!activeZones.has(index) ? 'opacity-50' : ''}`}
+                    onMouseEnter={() => setHoveredZoneIndex(index)}
+                    onMouseLeave={() => setHoveredZoneIndex(null)}
+                    onClick={() => toggleZone(index)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={activeZones.has(index)}
+                      onChange={() => toggleZone(index)}
+                      className="mr-2 mt-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 mt-0.5 flex-shrink-0" style={{ backgroundColor: zone.color }} />
+                    <div className="flex-1">
+                      <p className="font-medium">{zone.name}: {(zone.radius / 1000).toFixed(1)} km</p>
+                      <p className="text-gray-300 text-xs">{zone.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            /* Show only filtered category */
+            blastZones.filter(z => z.category === selectedCategory).map((zone) => {
+              const index = blastZones.findIndex(z => z === zone);
+              return (
+                <div 
+                  key={index} 
+                  className={`flex items-start p-1 rounded transition-colors cursor-pointer ${
+                    hoveredZoneIndex === index ? 'bg-gray-800' : ''
+                  } ${!activeZones.has(index) ? 'opacity-50' : ''}`}
+                  onMouseEnter={() => setHoveredZoneIndex(index)}
+                  onMouseLeave={() => setHoveredZoneIndex(null)}
+                  onClick={() => toggleZone(index)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={activeZones.has(index)}
+                    onChange={() => toggleZone(index)}
+                    className="mr-2 mt-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span className="inline-block w-2.5 h-2.5 rounded-full mr-2 mt-0.5 flex-shrink-0" style={{ backgroundColor: zone.color }} />
+                  <div className="flex-1">
+                    <p className="font-medium">{zone.name}: {(zone.radius / 1000).toFixed(1)} km</p>
+                    <p className="text-gray-300 text-xs">{zone.description}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
         
         <p className="text-xs text-gray-400 mt-4">
