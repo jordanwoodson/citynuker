@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "City Nuker - Nuclear Blast Simulator",
-  description: "Simulate nuclear blast effects on any city. Visualize blast radius, thermal radiation, and fallout patterns with our interactive nuclear weapon effects calculator.",
-  keywords: "nuclear blast simulator, nuclear weapon effects, blast radius calculator, fallout map, thermal radiation, overpressure calculator",
+  description: "Simulate nuclear blast effects on any city. Visualize blast radius and thermal radiation with our interactive nuclear weapon effects calculator.",
+  keywords: "nuclear blast simulator, nuclear weapon effects, blast radius calculator, thermal radiation, overpressure calculator",
   authors: [{ name: "Nukr Team" }],
   creator: "Nukr",
   publisher: "Nukr",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "City Nuker - Nuclear Blast Simulator",
-    description: "Simulate nuclear blast effects on any city. Visualize blast radius, thermal radiation, and fallout patterns with our interactive nuclear weapon effects calculator.",
+    description: "Simulate nuclear blast effects on any city. Visualize blast radius and thermal radiation with our interactive nuclear weapon effects calculator.",
     url: 'https://nukr.app',
     siteName: 'City Nuker',
     images: [
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: "City Nuker - Nuclear Blast Simulator",
-    description: "Simulate nuclear blast effects on any city. Visualize blast radius, thermal radiation, and fallout patterns.",
+    description: "Simulate nuclear blast effects on any city. Visualize blast radius and thermal radiation.",
     images: ['/og-image.png'],
     creator: '@nukr',
   },

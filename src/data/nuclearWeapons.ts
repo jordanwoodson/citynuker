@@ -31,7 +31,6 @@ export interface NuclearWeapon {
   burstInfo?: {
     typical: 'airburst' | 'groundburst';
     height?: number; // typical burst height in meters
-    falloutInfo?: string; // brief fallout description
   };
 }
 
@@ -147,8 +146,7 @@ export const nuclearWeapons: NuclearWeapon[] = [
     },
     burstInfo: {
       typical: 'airburst',
-      height: 600,
-      falloutInfo: 'Minimal local fallout due to airburst - prevented fireball ground contact'
+      height: 600
     }
   },
   {
@@ -179,8 +177,7 @@ export const nuclearWeapons: NuclearWeapon[] = [
     },
     burstInfo: {
       typical: 'airburst',
-      height: 500,
-      falloutInfo: 'Negligible local fallout - airburst prevented soil uptake'
+      height: 500
     }
   },
   {
@@ -211,8 +208,7 @@ export const nuclearWeapons: NuclearWeapon[] = [
     },
     burstInfo: {
       typical: 'groundburst',
-      height: 0,
-      falloutInfo: 'Massive fallout - contaminated 7,000 sq miles, fallout cloud 100 miles long'
+      height: 0
     }
   },
   {
@@ -243,8 +239,7 @@ export const nuclearWeapons: NuclearWeapon[] = [
     },
     burstInfo: {
       typical: 'airburst',
-      height: 4000,
-      falloutInfo: 'Very low fallout for size - "cleanest" megaton test (97% fusion), fireball did not touch ground'
+      height: 4000
     }
   },
 
@@ -278,8 +273,7 @@ export const nuclearWeapons: NuclearWeapon[] = [
     variableYields: [0.01, 0.02],
     burstInfo: {
       typical: 'groundburst',
-      height: 0,
-      falloutInfo: 'Significant local fallout for its size - operators had to fire from >400m'
+      height: 0
     }
   },
   {
@@ -788,28 +782,6 @@ export const getWeaponsByCategory = (category: NuclearWeapon['category']): Nucle
   return nuclearWeapons.filter(weapon => weapon.category === category);
 };
 
-// Fallout calculation for ground bursts
-export interface FalloutZone {
-  lethalDose: number;      // 1000+ rem/hr zone length in km
-  seriousDose: number;     // 300 rem/hr zone length in km  
-  moderateDose: number;    // 100 rem/hr zone length in km
-  width: number;           // Approximate width at widest point in km
-}
-
-export const calculateFallout = (yieldKt: number, isGroundBurst: boolean): FalloutZone | null => {
-  if (!isGroundBurst) return null; // Airbursts produce minimal local fallout
-  
-  // Simplified fallout model based on yield
-  // Length scales roughly as Y^0.5, width as Y^0.33
-  const yieldMt = yieldKt / 1000;
-  
-  return {
-    lethalDose: 20 * Math.pow(yieldMt, 0.5),     // ~20 km for 1 Mt
-    seriousDose: 50 * Math.pow(yieldMt, 0.5),    // ~50 km for 1 Mt
-    moderateDose: 100 * Math.pow(yieldMt, 0.5),  // ~100 km for 1 Mt
-    width: 5 * Math.pow(yieldMt, 0.33)            // ~5 km for 1 Mt
-  };
-};
 
 // Effect descriptions for UI
 export const effectDescriptions = {
@@ -830,8 +802,8 @@ export const effectDescriptions = {
   },
   fireball: 'Zone of complete vaporization - everything within this radius is destroyed by extreme heat',
   heightOfBurst: {
-    airburst: 'Maximizes blast and thermal effects over wide area, minimal local fallout',
-    surface: 'Maximizes ground shock and cratering, produces significant local fallout'
+    airburst: 'Maximizes blast and thermal effects over wide area',
+    surface: 'Maximizes ground shock and cratering'
   }
 };
 
@@ -844,8 +816,7 @@ export const modelAssumptions = {
   limitations: [
     'Actual effects may vary significantly based on local conditions',
     'Urban environments may channel or shield blast effects',
-    'Weather conditions can reduce thermal radiation effects',
-    'Fallout patterns depend heavily on wind and are not modeled here'
+    'Weather conditions can reduce thermal radiation effects'
   ],
   sources: [
     'Glasstone & Dolan, "The Effects of Nuclear Weapons" (1977)',

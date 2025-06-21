@@ -1,7 +1,7 @@
 {
   "name": "City Nuker - Nuclear Blast Simulator",
   "short_name": "City Nuker",
-  "description": "Simulate nuclear blast effects on any city. Visualize blast radius, thermal radiation, and fallout patterns.",
+  "description": "Simulate nuclear blast effects on any city. Visualize blast radius and thermal radiation.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#111827",

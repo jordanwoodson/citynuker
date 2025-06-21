@@ -12,26 +12,26 @@ interface CitySuggestion {
 }
 
 export default function Home() {
-  // Add JSON-LD structured data
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'WebApplication',
-    name: 'City Nuker - Nuclear Blast Simulator',
-    description: 'Simulate nuclear blast effects on any city. Visualize blast radius, thermal radiation, and fallout patterns with our interactive nuclear weapon effects calculator.',
-    applicationCategory: 'EducationalApplication',
-    operatingSystem: 'Any',
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-    },
-    author: {
-      '@type': 'Organization',
-      name: 'Nukr',
-    },
-  };
-
   useEffect(() => {
+    // Add JSON-LD structured data
+    const jsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      name: 'City Nuker - Nuclear Blast Simulator',
+      description: 'Simulate nuclear blast effects on any city. Visualize blast radius and thermal radiation with our interactive nuclear weapon effects calculator.',
+      applicationCategory: 'EducationalApplication',
+      operatingSystem: 'Any',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+      author: {
+        '@type': 'Organization',
+        name: 'Nukr',
+      },
+    };
+
     // Add structured data to head
     const scriptTag = document.createElement('script');
     scriptTag.type = 'application/ld+json';
