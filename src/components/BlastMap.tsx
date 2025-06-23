@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Circle, Marker, Popup, useMapEvents, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { NuclearWeapon } from '@/data/nuclearWeapons';
+import { estimatePopulationDensity, calculateCasualties, CasualtyData, formatCasualties } from '@/data/populationCalculations';
+import CasualtyEstimates from '@/components/CasualtyEstimates';
 import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet default icon issue
@@ -177,10 +179,43 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
   const [showInfo, setShowInfo] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'blast' | 'thermal' | 'radiation' | 'infrastructure'>('blast');
   const [mapStyle, setMapStyle] = useState<'voyager' | 'satellite' | 'dark'>('voyager');
+  const [casualtyData, setCasualtyData] = useState<CasualtyData | null>(null);
+  const [showCasualties, setShowCasualties] = useState(true);
+  const [showMobileCasualties, setShowMobileCasualties] = useState(false);
+  const [isCalculatingCasualties, setIsCalculatingCasualties] = useState(false);
 
   const handlePositionChange = (newLat: number, newLng: number) => {
     setCurrentPosition([newLat, newLng]);
   };
+
+  // Fetch population data and calculate casualties
+  useEffect(() => {
+    const fetchPopulationAndCalculateCasualties = async () => {
+      if (weaponData) {
+        setIsCalculatingCasualties(true);
+        const popData = await estimatePopulationDensity(
+          currentPosition[0], 
+          currentPosition[1], 
+          cityName
+        );
+        
+        const casualties = calculateCasualties(
+          weaponData.blastEffects, 
+          popData,
+          { lat: currentPosition[0], lng: currentPosition[1] }
+        );
+        setCasualtyData(casualties);
+        setIsCalculatingCasualties(false);
+      }
+    };
+
+    // Add a small delay to debounce rapid position changes during dragging
+    const timeoutId = setTimeout(() => {
+      fetchPopulationAndCalculateCasualties();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [currentPosition, weaponData, cityName]);
 
   // Use accurate blast zones from weapon data if available
   const blastZones = weaponData ? [
@@ -476,7 +511,7 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
       </div>
       
       {/* Top Control Panel - Effect Filter and Active Zones */}
-      <div className="absolute top-4 left-4 right-4 sm:left-[400px] sm:right-[400px] flex gap-2 z-[999]">
+      <div className="absolute top-4 left-4 right-4 sm:left-[420px] sm:right-[400px] flex gap-2 z-[999]">
         {/* Category Filter - Vertical layout */}
         <div className="bg-black bg-opacity-80 text-white rounded-lg p-2 flex-shrink-0">
           <p className="text-xs font-semibold mb-1">Effect Type:</p>
@@ -546,7 +581,9 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
                     className="inline-block w-2 h-2 rounded-full mr-1 flex-shrink-0" 
                     style={{ backgroundColor: zone.color }}
                   />
-                  <span className="text-xs whitespace-nowrap">{zone.name}</span>
+                  <span className="text-xs whitespace-nowrap">
+                    {zone.name} <span className="text-gray-400">({(zone.radius / 1000).toFixed(1)}km)</span>
+                  </span>
                 </div>
               );
             })}
@@ -554,24 +591,6 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
         </div>
       </div>
       
-      {/* Map Legend - Desktop Only */}
-      <div className="hidden sm:block absolute bottom-4 right-4 bg-black bg-opacity-80 text-white p-3 rounded-lg z-[999] max-w-xs max-h-[400px] overflow-y-auto">
-        <h4 className="text-xs font-bold mb-2">Quick Reference</h4>
-        <div className="space-y-1">
-          {sortedZones.map((zone) => {
-            const index = blastZones.findIndex(z => z === zone);
-            return (
-              <div key={index} className="flex items-center text-xs">
-                <span 
-                  className="inline-block w-3 h-3 rounded-full mr-2 flex-shrink-0" 
-                  style={{ backgroundColor: zone.color }}
-                />
-                <span className="truncate">{zone.name} ({(zone.radius / 1000).toFixed(1)}km)</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
       
       
       {/* Mobile info tab trigger - Bottom of screen */}
@@ -636,6 +655,28 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
         <p className="text-xs text-gray-400 mb-3">
           Click map or drag marker to move blast center
         </p>
+        
+        {/* Casualty Estimates Toggle and Component - Mobile Only */}
+        {weaponData && (
+          <div className="mb-3 sm:hidden">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">Population Impact</h3>
+              <button
+                onClick={() => setShowCasualties(!showCasualties)}
+                className="text-xs text-gray-400 hover:text-white transition-colors"
+              >
+                {showCasualties ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {showCasualties && (
+              <CasualtyEstimates 
+                casualtyData={casualtyData} 
+                isLoading={!casualtyData || isCalculatingCasualties}
+                usingRealData={casualtyData?.usingRealData}
+              />
+            )}
+          </div>
+        )}
         
         {/* Map Style Selector - Mobile */}
         <div className="mb-3">
@@ -849,6 +890,81 @@ export default function BlastMap({ lat, lng, radius, bombName, cityName, weaponD
       >
         Drop Another Nuke
       </button>
+      
+      {/* Mobile Casualty Estimates Button - Positioned below Effect Type filter */}
+      {weaponData && (
+        <button
+          onClick={() => setShowMobileCasualties(!showMobileCasualties)}
+          className="sm:hidden absolute top-[180px] left-4 px-3 py-2 bg-gray-900 hover:bg-gray-800 rounded-lg text-xs font-medium transition-all z-[999] shadow-lg border border-gray-700"
+        >
+          <div className="flex flex-col items-start gap-1">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span>Casualties</span>
+            </div>
+            {casualtyData && !isCalculatingCasualties && (
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-red-400">
+                  {formatCasualties(casualtyData.totals.fatalities)} dead
+                </span>
+                <span className="text-orange-400">
+                  {formatCasualties(casualtyData.totals.injuries)} injured
+                </span>
+              </div>
+            )}
+            {isCalculatingCasualties && (
+              <div className="text-xs text-gray-400">Calculating...</div>
+            )}
+          </div>
+        </button>
+      )}
+      
+      {/* Mobile Casualty Estimates Popout */}
+      {weaponData && showMobileCasualties && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="sm:hidden fixed inset-0 bg-black/50 z-[1001]" 
+            onClick={() => setShowMobileCasualties(false)}
+          />
+          {/* Popout Panel */}
+          <div className="sm:hidden fixed inset-x-0 top-0 z-[1002]">
+            <div className="bg-gray-900/95 backdrop-blur-sm m-4 rounded-lg shadow-2xl border border-gray-700 max-h-[80vh] overflow-y-auto">
+              <div className="sticky top-0 bg-gray-900 p-4 border-b border-gray-700 flex justify-between items-center">
+                <h2 className="text-lg font-semibold text-white">Casualty Estimates</h2>
+                <button
+                  onClick={() => setShowMobileCasualties(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4">
+                <CasualtyEstimates 
+                  casualtyData={casualtyData} 
+                  isLoading={!casualtyData || isCalculatingCasualties}
+                  usingRealData={casualtyData?.usingRealData}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      
+      {/* Desktop Casualty Panel - Positioned on the right */}
+      {weaponData && showCasualties && (
+        <div className="hidden sm:block absolute top-16 right-4 w-80 z-[999]">
+          <CasualtyEstimates 
+            casualtyData={casualtyData} 
+            isLoading={!casualtyData || isCalculatingCasualties}
+            usingRealData={casualtyData?.usingRealData}
+          />
+        </div>
+      )}
     </div>
   );
 }
